@@ -12,89 +12,354 @@
 #define GONIEC_K 9
 #define SKOCZEK_K 10
 #define PIONEK_K 11
-#define PUSTE 12
+#define BLANK 12
 
-int plansza[8][8] = {
+#define WIN 1000
+#define LOSE -1000
+
+int directions[] = {8, 8, 4, 4, 8, 3, 8, 8, 4, 4, 8, 3, 0};
+int distances[] = {2, 8, 8, 8, 2, 2, 2, 8, 8, 8, 2, 2, 0};
+
+int WX[12][8] = {
+    {-1, -1, 0, 1, 1, 1, 0, -1},
+    {-1, -1, 0, 1, 1, 1, 0, -1},
+    {-1, 0, 1, 0},
+    {-1, 1, 1, -1},
+    {-2, -1, 1, 2, 2, 1, -1, -2},
+    {-1, -1, -1},
+    {-1, -1, 0, 1, 1, 1, 0, -1},
+    {-1, -1, 0, 1, 1, 1, 0, -1},
+    {-1, 0, 1, 0},
+    {-1, 1, 1, -1},
+    {-2, -1, 1, 2, 2, 1, -1, -2},
+    {1, 1, 1}};
+
+int WY[12][8] = {
+    {0, 1, 1, 1, 0, -1, -1, -1},
+    {0, 1, 1, 1, 0, -1, -1, -1},
+    {0, 1, 0, -1},
+    {1, 1, -1, -1},
+    {1, 2, 2, 1, -1, -2, -2, -1},
+    {-1, 0, 1},
+    {0, 1, 1, 1, 0, -1, -1, -1},
+    {0, 1, 1, 1, 0, -1, -1, -1},
+    {0, 1, 0, -1},
+    {1, 1, -1, -1},
+    {1, 2, 2, 1, -1, -2, -2, -1},
+    {-1, 0, 1}};
+
+int board[8][8] = {
     {WIEZA_K, SKOCZEK_K, GONIEC_K, HETMAN_K, KROL_K, GONIEC_K, SKOCZEK_K, WIEZA_K},
     {PIONEK_K, PIONEK_K, PIONEK_K, PIONEK_K, PIONEK_K, PIONEK_K, PIONEK_K, PIONEK_K},
-    {PUSTE, PUSTE, PUSTE, PUSTE, PUSTE, PUSTE, PUSTE, PUSTE},
-    {PUSTE, PUSTE, PUSTE, PUSTE, PUSTE, PUSTE, PUSTE, PUSTE},
-    {PUSTE, PUSTE, PUSTE, PUSTE, PUSTE, PUSTE, PUSTE, PUSTE},
-    {PUSTE, PUSTE, PUSTE, PUSTE, PUSTE, PUSTE, PUSTE, PUSTE},
+    {BLANK, BLANK, BLANK, BLANK, BLANK, BLANK, BLANK, BLANK},
+    {BLANK, BLANK, BLANK, BLANK, BLANK, BLANK, BLANK, BLANK},
+    {BLANK, BLANK, BLANK, BLANK, BLANK, BLANK, BLANK, BLANK},
+    {BLANK, BLANK, BLANK, BLANK, BLANK, BLANK, BLANK, BLANK},
     {PIONEK, PIONEK, PIONEK, PIONEK, PIONEK, PIONEK, PIONEK, PIONEK},
     {WIEZA, SKOCZEK, GONIEC, HETMAN, KROL, GONIEC, SKOCZEK, WIEZA}};
 
-/**
- * @brief Place chessman basing on numerical value on chess board
- * 
- * @param field Chess board field
- * @return char chessman
- */
-const char *chessman(int pole)
+int heuristic[13][8][8] = {
+    // ------------------------------ PLAYER ------------------------------ //
+    // król
+    {{LOSE, LOSE, LOSE, LOSE, LOSE, LOSE, LOSE, LOSE},
+     {LOSE, LOSE, LOSE, LOSE, LOSE, LOSE, LOSE, LOSE},
+     {LOSE, LOSE, LOSE, LOSE, LOSE, LOSE, LOSE, LOSE},
+     {LOSE, LOSE, LOSE, LOSE, LOSE, LOSE, LOSE, LOSE},
+     {LOSE, LOSE, LOSE, LOSE, LOSE, LOSE, LOSE, LOSE},
+     {LOSE, LOSE, LOSE, LOSE, LOSE, LOSE, LOSE, LOSE},
+     {LOSE, LOSE, LOSE, LOSE, LOSE, LOSE, LOSE, LOSE},
+     {LOSE, LOSE, LOSE, LOSE, LOSE, LOSE, LOSE, LOSE}},
+    // hetman
+    {{-176, -178, -178, -179, -179, -178, -178, -176},
+     {-178, -180, -180, -180, -180, -180, -180, -178},
+     {-178, -180, -181, -181, -181, -181, -180, -178},
+     {-179, -180, -181, -181, -181, -181, -180, -179},
+     {-180, -180, -181, -181, -181, -181, -180, -179},
+     {-178, -181, -181, -181, -181, -181, -180, -178},
+     {-178, -180, -181, -180, -180, -180, -180, -178},
+     {-176, -178, -178, -179, -179, -178, -178, -176}},
+    // wieża
+    {{-100, -100, -100, -100, -100, -100, -100, -100},
+     {-101, -102, -102, -102, -102, -102, -102, -101},
+     {-99, -100, -100, -100, -100, -100, -100, -99},
+     {-99, -100, -100, -100, -100, -100, -100, -99},
+     {-99, -100, -100, -100, -100, -100, -100, -99},
+     {-99, -100, -100, -100, -100, -100, -100, -99},
+     {-99, -100, -100, -100, -100, -100, -100, -99},
+     {-100, -100, 100, -101, -101, -100, -100, -100}},
+    // goniec
+    {{-56, -58, -58, -58, -58, -58, -58, -56},
+     {-58, -60, -60, -60, -60, -60, -60, -58},
+     {-58, -60, -61, -62, -62, -61, -60, -58},
+     {-58, -61, -61, -62, -62, -61, -61, -58},
+     {-58, -60, -62, -62, -62, -62, -60, -58},
+     {-58, -62, -62, -62, -62, -62, -62, -58},
+     {-58, -61, -60, -60, -60, -60, -61, -58},
+     {-56, -58, -58, -58, -58, -58, -58, -56}},
+    // skoczek
+    {{-50, -52, -54, -54, -54, -54, -52, -50},
+     {-52, -56, -60, -60, -60, -60, -56, -52},
+     {-54, -60, -62, -63, -63, -62, -60, -54},
+     {-54, -61, -63, -64, -64, -63, -61, -54},
+     {-54, -60, -63, -64, -64, -63, -60, -54},
+     {-54, -61, -62, -63, -63, -62, -61, -54},
+     {-52, -56, -60, -61, -61, -60, -56, -52},
+     {-50, -52, -54, -54, -54, -54, -52, -50}},
+    // pionek
+    {{-20, -20, -20, -20, -20, -20, -20, -20},
+     {-30, -30, -30, -30, -30, -30, -30, -30},
+     {-22, -22, -24, -26, -26, -24, -22, -22},
+     {-21, -21, -22, -25, -25, -22, -21, -21},
+     {-20, -20, -20, -24, -24, -20, -20, -20},
+     {-21, -19, -18, -20, -20, -18, -19, -21},
+     {-21, -22, -22, -16, -16, -22, -22, -21},
+     {-20, -20, -20, -20, -20, -20, -20, -20}},
+
+    // -------------------------------- AI -------------------------------- //
+    // król komputera
+    {{WIN, WIN, WIN, WIN, WIN, WIN, WIN, WIN},
+     {WIN, WIN, WIN, WIN, WIN, WIN, WIN, WIN},
+     {WIN, WIN, WIN, WIN, WIN, WIN, WIN, WIN},
+     {WIN, WIN, WIN, WIN, WIN, WIN, WIN, WIN},
+     {WIN, WIN, WIN, WIN, WIN, WIN, WIN, WIN},
+     {WIN, WIN, WIN, WIN, WIN, WIN, WIN, WIN},
+     {WIN, WIN, WIN, WIN, WIN, WIN, WIN, WIN},
+     {WIN, WIN, WIN, WIN, WIN, WIN, WIN, WIN}},
+    // hetman komputera
+    {{176, 178, 178, 179, 179, 178, 178, 176},
+     {178, 180, 180, 180, 180, 180, 180, 178},
+     {178, 180, 181, 181, 181, 181, 180, 178},
+     {179, 180, 181, 181, 181, 181, 180, 179},
+     {180, 180, 181, 181, 181, 181, 180, 179},
+     {178, 181, 181, 181, 181, 181, 180, 178},
+     {178, 180, 181, 180, 180, 180, 180, 178},
+     {176, 178, 178, 179, 179, 178, 178, 176}},
+    // wieża komputera
+    {{100, 100, 100, 101, 101, 100, 100, 100},
+     {99, 100, 100, 100, 100, 100, 100, 99},
+     {99, 100, 100, 100, 100, 100, 100, 99},
+     {99, 100, 100, 100, 100, 100, 100, 99},
+     {99, 100, 100, 100, 100, 100, 100, 99},
+     {99, 100, 100, 100, 100, 100, 100, 99},
+     {101, 102, 102, 102, 102, 102, 102, 101},
+     {100, 100, 100, 100, 100, 100, 100, 100}},
+    // goniec komputera
+    {{56, 58, 58, 58, 58, 58, 58, 56},
+     {58, 61, 60, 60, 60, 60, 61, 58},
+     {58, 62, 62, 62, 62, 62, 62, 58},
+     {58, 60, 62, 62, 62, 62, 60, 58},
+     {58, 61, 61, 62, 62, 61, 61, 58},
+     {58, 60, 61, 62, 62, 61, 60, 58},
+     {58, 60, 60, 60, 60, 60, 60, 58},
+     {56, 58, 58, 58, 58, 58, 58, 56}},
+    // skoczek komputera
+    {{50, 52, 54, 54, 54, 54, 52, 50},
+     {52, 56, 60, 60, 60, 60, 56, 52},
+     {54, 60, 62, 63, 63, 62, 60, 54},
+     {54, 61, 63, 64, 64, 63, 61, 54},
+     {54, 60, 63, 64, 64, 63, 60, 54},
+     {54, 61, 62, 63, 63, 62, 61, 54},
+     {52, 56, 60, 61, 61, 60, 56, 52},
+     {50, 52, 54, 54, 54, 54, 52, 50}},
+    // pionek komputera
+    {{20, 20, 20, 20, 20, 20, 20, 20},
+     {21, 22, 22, 16, 16, 22, 22, 21},
+     {21, 19, 18, 20, 20, 18, 19, 21},
+     {20, 20, 20, 24, 24, 20, 20, 20},
+     {21, 21, 22, 25, 25, 22, 21, 21},
+     {22, 22, 24, 26, 26, 24, 22, 22},
+     {30, 30, 30, 30, 30, 30, 30, 30},
+     {20, 20, 20, 20, 20, 20, 20, 20}},
+    // BLANK
+    {{0, 0, 0, 0, 0, 0, 0, 0},
+     {0, 0, 0, 0, 0, 0, 0, 0},
+     {0, 0, 0, 0, 0, 0, 0, 0},
+     {0, 0, 0, 0, 0, 0, 0, 0},
+     {0, 0, 0, 0, 0, 0, 0, 0},
+     {0, 0, 0, 0, 0, 0, 0, 0},
+     {0, 0, 0, 0, 0, 0, 0, 0},
+     {0, 0, 0, 0, 0, 0, 0, 0}}};
+
+/*
+    0 - król
+    1 - hetman
+    2 - wieża
+    3 - goniec
+    4 - skoczek
+    5 - pionek
+
+    6 - król_k
+    7 - hetman_k
+    8 - wieża_k
+    9 - goniec_k
+    10 - skoczek_k
+    11 - pionek_k
+
+    12 - field BLANK
+*/
+
+const char *chessman(int field)
 {
-    if (pole == KROL)
+    if (field == KROL)
         return "♛";
-    if (pole == HETMAN)
+    if (field == HETMAN)
         return "♚";
-    if (pole == WIEZA)
+    if (field == WIEZA)
         return "♜";
-    if (pole == GONIEC)
+    if (field == GONIEC)
         return "♝";
-    if (pole == SKOCZEK)
+    if (field == SKOCZEK)
         return "♞";
-    if (pole == PIONEK)
+    if (field == PIONEK)
         return "♟";
 
-    if (pole == KROL_K)
-        return "♔";
-    if (pole == HETMAN_K)
+    if (field == KROL_K)
         return "♕";
-    if (pole == WIEZA_K)
+    if (field == HETMAN_K)
+        return "♔";
+    if (field == WIEZA_K)
         return "♖";
-    if (pole == GONIEC_K)
+    if (field == GONIEC_K)
         return "♗";
-    if (pole == SKOCZEK_K)
+    if (field == SKOCZEK_K)
         return "♘";
-    if (pole == PIONEK_K)
+    if (field == PIONEK_K)
         return "♙";
 
     // default fallback
-    return "␣";
+    return " ";
 }
 
-/**
- * @brief Print current chess board
- * 
- * @param board Chess board
- */
-void generateBoard(int board[8][8])
+int estimateBoard(int board[8][8])
 {
-    printf("   | A | B | C | D | E | F | G | H |\n");
-    printf("---+---+---+---+---+---+---+---+---+\n");
-    for (int row = 0; row < 8; row++)
+    int result = 0;
+    for (int x = 0; x < 8; x++)
+        for (int y = 0; y < 8; y++)
+            result += heuristic[board[x][y]][x][y];
+    return result;
+}
+
+int najlepszy(int board[8][8], int depth, int *x, int *y, int *dir, int *dist)
+{
+    int tmp_x,
+        tmp_y,
+        tmp_dir,
+        tmp_dist,
+        px,
+        py,
+        dx,
+        dy,
+        direction,
+        distance,
+        result = estimateBoard(board),
+        wmax,
+        wmin,
+        ruch_fig,
+        bita_fig;
+
+    if (depth == 0 || 2 * result > WIN || 2 * result < LOSE)
+        return result;
+
+    if (depth % 2 == 0) // ruch komputera
     {
-        printf(" %d |", row + 1);
-        for (int col = 0; col < 8; col++)
-        {
-            int field = board[row][col];
-            printf(" %s |", chessman(field));
-        }
-        printf("\n---+---+---+---+---+---+---+---+---+\n");
+        for (px = 0, wmax = 100 * LOSE; px < 8; px++)
+            for (py = 0; py < 8; py++)
+                // na polu chessman komputera
+                if (board[px][py] >= 6 && board[px][py] <= 12)
+                    for (direction = 0; direction < directions[board[px][py]]; direction++)
+                        for (distance = 1; direction < distances[board[px][py]]; distance++)
+                        {
+                            dx = (distance - 1) * WX[board[px][py]][direction];
+                            dy = (distance - 1) * WY[board[px][py]][direction];
+                            // jeśli po drodze nieBLANK
+                            if (distance >= 2 && board[px + dx][py + dy] != BLANK)
+                                break;
+                            dx = distance * WX[board[px][py]][direction];
+                            dy = distance * WY[board[px][py]][direction];
+                            // ruch mieści się w szachownicy
+                            if (px + dx >= 0 && px + dx < 8 && py + dy >= 0 && py + dy < 8)
+                                // docelowe field BLANK lub chessman przeciwnika
+                                if (board[px + dx][py + dy] == BLANK || board[px + dx][py + dy] <= 5)
+                                    // warunek dodatkowy dla piona (bicie w bok, ruch naprzód)
+                                    if (board[px][py] != 11 || (board[px + dx][py + dy] == BLANK && dx == 0) || (board[px + dx][py + dy] != BLANK && dx != 0))
+                                    {
+                                        ruch_fig = board[px][py];
+                                        bita_fig = board[px + dx][py + dy]; //ruch
+                                        board[px + dx][py + dy] = board[px][py];
+                                        board[px][py] = BLANK;
+                                        if (board[px + dx][py + dy] == 11 && py + dy == 7) // pion doszedł do końca to
+                                            board[px + dx][py + dy] = 7;                   // wymiana na hetmana
+                                        result = najlepszy(board, depth - 1, &tmp_x, &tmp_y, &tmp_dir, &tmp_dist);
+                                        // cofnięcie ruchu
+                                        board[px][py] = ruch_fig;
+                                        board[px + dx][py + dy] = bita_fig;
+                                        if (result >= wmax)
+                                        {
+                                            wmax = result;
+                                            *x = px;
+                                            *y = py;
+                                            *dir = direction;
+                                            *dist = distance;
+                                        }
+                                    }
+                        }
+        return wmax; // należy również przewidzieć pat
+    }
+    else // ruch przeciwnika
+    {
+        for (px = 0, wmin = 100 * WIN; px < 8; px++)
+            for (py = 0; py < 8; py++)
+                // na polu chessman przeciwnika
+                if (board[px][py] <= 5)
+                    for (direction = 0; direction < directions[board[px][py]]; direction++)
+                        for (distance = 1; distance < distances[board[px][py]]; distance++)
+                        {
+                            dx = (distance - 1) * WX[board[px][py]][direction];
+                            dy = (distance - 1) * WY[board[px][py]][direction];
+                            // jeśli po drodze nieBLANK
+                            if (distance >= 2 && board[px + dx][py + dy] != BLANK)
+                                break;
+                            dx = distance * WX[board[px][py]][direction];
+                            dy = distance * WY[board[px][py]][direction];
+                            // ruch mieści się w szachownicy
+                            if (px + dx >= 0 && px + dx < 8 && py + dy >= 0 && py + dy < 8)
+                                // docelowe field BLANK lub fig przeciwnika
+                                if (board[px + dx][py + dy] >= 6)
+                                    // warunek dodatkowy dla piona (picie w bok, ruch naprzód)
+                                    if (board[px][py] != 5 || (board[px + dx][py + dy] == BLANK && dx == 0) || (board[px + dx][py + dy] != BLANK && dx != 0))
+                                    {
+                                        ruch_fig = board[px][py];
+                                        bita_fig = board[px + dx][py + dy];
+                                        board[px + dx][py + dy] = board[px][py];
+                                        board[px][py] = BLANK;
+                                        // jeśli pion doszedł do końca to wymiana na hetmana
+                                        if (board[px + dx][py + dy] == 5 && py + dy == 0)
+                                            board[px + dx][py + dy] = 1;
+                                        result = najlepszy(board, depth - 1, &tmp_x, &tmp_y, &tmp_dir, &tmp_dist);
+                                        // cofnięcie ruchu
+                                        board[px][py] = ruch_fig;
+                                        board[px + dx][py + dy] = bita_fig;
+                                        if (result <= wmin)
+                                        {
+                                            wmin = result;
+                                            *x = px;
+                                            *y = py;
+                                            *dir = direction;
+                                            *dist = distance;
+                                        }
+                                    }
+                        }
+        return wmin; // należy również przewidzieć pat
     }
 }
 
-/**
- * @brief Get the move of object
- * 
- * @param board Chess board
- */
 void getMove(int board[8][8])
 {
     int colFrom, rowFrom,
         colTo, rowTo, toMove;
     char tmpFrom, tmpTo, ch;
 
-    printf("Move from: ");
+    printf("Move from (a1): ");
     scanf("%c%d%c", &tmpFrom, &rowFrom, &ch);
     rowFrom--;
     if (tmpFrom >= 'a' && tmpFrom <= 'h')
@@ -108,7 +373,7 @@ void getMove(int board[8][8])
         getMove(board);
     }
 
-    printf("Move to: ");
+    printf("Move to (a1): ");
     scanf("%c%d%c", &tmpTo, &rowTo, &ch);
     rowTo--;
     if (tmpTo >= 'a' && tmpTo <= 'h')
@@ -122,38 +387,59 @@ void getMove(int board[8][8])
         getMove(board);
     }
 
-    if (board[rowTo][colTo] != PUSTE)
+    if (board[rowTo][colTo] <= PIONEK)
     {
         printf("This field is already taken! Try again!\n");
         getMove(board);
     }
 
-    // int fromXY = {rowFrom, colFrom},
-    //     toXY = {rowTo, colTo};
-    // if (!canMove(fromXY, toXY))
-    // {
-    //     printf("This field is already taken! Try again!\n");
-    //     getMove(board);
-    // }
-
     board[rowTo][colTo] = board[rowFrom][colFrom];
-    board[rowFrom][colFrom] = PUSTE;
+    board[rowFrom][colFrom] = BLANK;
 }
 
-// int canMove(int from[2], int to[2])
-// {
-//     return 1;
-//     return 0;
-// }
+void printBoard(int board[8][8])
+{
+    system("clear");
+    printf("   | A | B | C | D | E | F | G | H |\n");
+    printf("---+---+---+---+---+---+---+---+---+\n");
+    for (int row = 0; row < 8; row++)
+    {
+        printf(" %d |", row + 1);
+        for (int col = 0; col < 8; col++)
+        {
+            int field = board[row][col];
+            printf(" %s |", chessman(field));
+        }
+        printf("\n---+---+---+---+---+---+---+---+---+\n");
+        // printf("\n");
+    }
+}
 
 int main(void)
 {
-    generateBoard(plansza);
-    int end = 0;
-    while (!end)
+    int koniec = 0,
+        res = 0;
+    printBoard(board);
+    while (!koniec)
     {
-        getMove(plansza);
-        generateBoard(plansza);
+        int x = 0, y = 0, dir = 0, dist = 0, px = 0, py = 0;
+        getMove(board);
+        printBoard(board);
+
+        res = najlepszy(board, 6, &x, &y, &dir, &dist);
+
+        // if (abs(res) >= WIN)
+        //     break;
+
+        px = WX[board[x][y]][dir] * dist;
+        py = WY[board[x][y]][dir] * dist;
+        board[x + px][y + py] = board[x][y];
+        board[x][y] = BLANK;
+        printBoard(board);
     }
+    if (res >= WIN)
+        printf("You lost.\n");
+    if (res <= LOSE)
+        printf("You won!\n");
     return 0;
 }
