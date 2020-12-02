@@ -264,8 +264,8 @@ int najlepszy(int board[8][8], int depth, int *x, int *y, int *dir, int *dist)
     {
         for (px = 0, wmax = 100 * LOSE; px < 8; px++)
             for (py = 0; py < 8; py++)
-                // na polu chessman komputera
-                if (board[px][py] >= 6 && board[px][py] <= 12)
+                // na polu figura komputera
+                if (board[px][py] >= KROL_K && board[px][py] <= PIONEK_K)
                     for (direction = 0; direction < directions[board[px][py]]; direction++)
                         for (distance = 1; direction < distances[board[px][py]]; distance++)
                         {
@@ -278,16 +278,16 @@ int najlepszy(int board[8][8], int depth, int *x, int *y, int *dir, int *dist)
                             dy = distance * WY[board[px][py]][direction];
                             // ruch mieści się w szachownicy
                             if (px + dx >= 0 && px + dx < 8 && py + dy >= 0 && py + dy < 8)
-                                // docelowe field BLANK lub chessman przeciwnika
-                                if (board[px + dx][py + dy] == BLANK || board[px + dx][py + dy] <= 5)
+                                // docelowe ple puste lub figura przeciwnika
+                                if (board[px + dx][py + dy] == BLANK || board[px + dx][py + dy] <= PIONEK)
                                     // warunek dodatkowy dla piona (bicie w bok, ruch naprzód)
-                                    if (board[px][py] != 11 || (board[px + dx][py + dy] == BLANK && dx == 0) || (board[px + dx][py + dy] != BLANK && dx != 0))
+                                    if (board[px][py] != PIONEK_K || (board[px + dx][py + dy] == BLANK && dx == 0) || (board[px + dx][py + dy] != BLANK && dx != 0))
                                     {
                                         ruch_fig = board[px][py];
                                         bita_fig = board[px + dx][py + dy]; //ruch
                                         board[px + dx][py + dy] = board[px][py];
                                         board[px][py] = BLANK;
-                                        if (board[px + dx][py + dy] == 11 && py + dy == 7) // pion doszedł do końca to
+                                        if (board[px + dx][py + dy] == PIONEK_K && py + dy == 7) // pion doszedł do końca to
                                             board[px + dx][py + dy] = 7;                   // wymiana na hetmana
                                         result = najlepszy(board, depth - 1, &tmp_x, &tmp_y, &tmp_dir, &tmp_dist);
                                         // cofnięcie ruchu
@@ -309,8 +309,8 @@ int najlepszy(int board[8][8], int depth, int *x, int *y, int *dir, int *dist)
     {
         for (px = 0, wmin = 100 * WIN; px < 8; px++)
             for (py = 0; py < 8; py++)
-                // na polu chessman przeciwnika
-                if (board[px][py] <= 5)
+                // na polu figura przeciwnika
+                if (board[px][py] <= PIONEK)
                     for (direction = 0; direction < directions[board[px][py]]; direction++)
                         for (distance = 1; distance < distances[board[px][py]]; distance++)
                         {
@@ -323,17 +323,17 @@ int najlepszy(int board[8][8], int depth, int *x, int *y, int *dir, int *dist)
                             dy = distance * WY[board[px][py]][direction];
                             // ruch mieści się w szachownicy
                             if (px + dx >= 0 && px + dx < 8 && py + dy >= 0 && py + dy < 8)
-                                // docelowe field BLANK lub fig przeciwnika
-                                if (board[px + dx][py + dy] >= 6)
-                                    // warunek dodatkowy dla piona (picie w bok, ruch naprzód)
-                                    if (board[px][py] != 5 || (board[px + dx][py + dy] == BLANK && dx == 0) || (board[px + dx][py + dy] != BLANK && dx != 0))
+                                // docelowe pole puste lub figura przeciwnika
+                                if (board[px + dx][py + dy] >= KROL_K)
+                                    // warunek dodatkowy dla piona (bicie w bok, ruch naprzód)
+                                    if (board[px][py] != PIONEK || (board[px + dx][py + dy] == BLANK && dx == 0) || (board[px + dx][py + dy] != BLANK && dx != 0))
                                     {
                                         ruch_fig = board[px][py];
                                         bita_fig = board[px + dx][py + dy];
                                         board[px + dx][py + dy] = board[px][py];
                                         board[px][py] = BLANK;
                                         // jeśli pion doszedł do końca to wymiana na hetmana
-                                        if (board[px + dx][py + dy] == 5 && py + dy == 0)
+                                        if (board[px + dx][py + dy] == PIONEK && py + dy == 0)
                                             board[px + dx][py + dy] = 1;
                                         result = najlepszy(board, depth - 1, &tmp_x, &tmp_y, &tmp_dir, &tmp_dist);
                                         // cofnięcie ruchu
@@ -422,17 +422,17 @@ int main(void)
     printBoard(board);
     while (!koniec)
     {
-        int x = 0, y = 0, dir = 0, dist = 0, px = 0, py = 0;
+        int x = 0, y = 0, dir = 0, dist = 0;
         getMove(board);
         printBoard(board);
 
         res = najlepszy(board, 6, &x, &y, &dir, &dist);
 
-        // if (abs(res) >= WIN)
-        //     break;
+        if (abs(res) >= WIN)
+            break;
 
-        px = WX[board[x][y]][dir] * dist;
-        py = WY[board[x][y]][dir] * dist;
+        int px = WX[board[x][y]][dir] * dist;
+        int py = WY[board[x][y]][dir] * dist;
         board[x + px][y + py] = board[x][y];
         board[x][y] = BLANK;
         printBoard(board);
