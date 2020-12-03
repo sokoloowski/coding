@@ -267,7 +267,7 @@ int najlepszy(int board[8][8], int depth, int *x, int *y, int *dir, int *dist)
                 // na polu figura komputera
                 if (board[px][py] >= KROL_K && board[px][py] <= PIONEK_K)
                     for (direction = 0; direction < directions[board[px][py]]; direction++)
-                        for (distance = 1; direction < distances[board[px][py]]; distance++)
+                        for (distance = 1; distance < distances[board[px][py]]; distance++)
                         {
                             dx = (distance - 1) * WX[board[px][py]][direction];
                             dy = (distance - 1) * WY[board[px][py]][direction];
