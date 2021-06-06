@@ -8,7 +8,7 @@
 
 using namespace std;
 
-int silnia(int x)
+int silnia(int n)
 {
     if (n == 0)
     {
